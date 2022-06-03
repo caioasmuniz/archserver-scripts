@@ -71,6 +71,7 @@ services:
   jellyfin:
     image: lscr.io/linuxserver/jellyfin
     container_name: jellyfin
+    network_mode: host
     environment:
       - PUID=1000
       - PGID=1000
