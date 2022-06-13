@@ -1,5 +1,7 @@
 version: '3'
-
+secrets:
+  duckdns_token:
+    file: ./secrets/duckdns-token.txt
 services:
   mariadb:
     image: lscr.io/linuxserver/mariadb
@@ -36,8 +38,8 @@ services:
     volumes:
       - /home/caio/.config/heimdall:/config
     ports:
-      - 80:80
-      - 443:443
+      - 8082:80
+      - 444:443
     restart: unless-stopped
   homeassistant:
     image: lscr.io/linuxserver/homeassistant
@@ -154,4 +156,18 @@ services:
     volumes:
       - '/home/caio/.config/pihole:/etc/pihole'
       - '/home/caio/.config/dnsmasq.d:/etc/dnsmasq.d'    
+    restart: unless-stopped
+  nginx:
+    image: lscr.io/linuxserver/nginx:latest
+    container_name: nginx
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=America/Sao_Paulo
+    volumes:
+      - /home/caio/.config/nginx:/config
+    ports:
+      - 80:80
+      - 443:443
     restart: unless-stopped
