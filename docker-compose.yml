@@ -27,7 +27,7 @@ services:
       - /home/caio/nextcloud-data:/data
     ports:
       - 8081:443
-    restart: unless-stopped   
+    restart: unless-stopped
   heimdall:
     image: lscr.io/linuxserver/heimdall
     container_name: heimdall
@@ -155,7 +155,7 @@ services:
       - TZ=America/Sao_Paulo
     volumes:
       - '/home/caio/.config/pihole:/etc/pihole'
-      - '/home/caio/.config/dnsmasq.d:/etc/dnsmasq.d'    
+      - '/home/caio/.config/dnsmasq.d:/etc/dnsmasq.d'
     restart: unless-stopped
   nginx:
     image: lscr.io/linuxserver/nginx:latest
@@ -171,3 +171,81 @@ services:
       - 80:80
       - 443:443
     restart: unless-stopped
+  ipfs:
+    image: lscr.io/linuxserver/ipfs
+    container_name: ipfs
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=America/Sao_Paulo
+    volumes:
+      - /home/caio/.config/ipfs:/config
+    ports:
+      - 4001:4001
+      - 5001:5001
+      - 8080:8080
+      - 8084:80
+      - 445:443
+    restart: unless-stopped
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - UMASK=002
+      - TZ=America/Sao_Paulo
+      - LOG_LEVEL=debug
+    ports:
+      - 5055:5055
+    volumes:
+      - /home/caio/.config/jellyseerr:/app/config
+    restart: unless-stopped
+  
+  influxdb:
+    container_name: scrutiny-influxdb
+    image: influxdb:2.2
+    ports:
+      - '8086:8086'
+    volumes:
+      - '/home/caio/.config/scrutiny/influxdb:/var/lib/influxdb2'
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/health"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+  web:
+    container_name: scrutiny-web
+    image: 'ghcr.io/analogj/scrutiny:master-web'
+    ports:
+      - '8083:8080'
+    volumes:
+      - '/home/caio/.config/scrutiny/web:/opt/scrutiny/config'
+    environment:
+      SCRUTINY_WEB_INFLUXDB_HOST: 'influxdb'
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+  collector:
+    container_name: scrutiny-collector
+    image: 'ghcr.io/analogj/scrutiny:master-collector'
+    cap_add:
+      - SYS_RAWIO
+    volumes:
+      - '/run/udev:/run/udev:ro'
+    environment:
+      COLLECTOR_API_ENDPOINT: 'http://web:8080'
+    depends_on:
+      web:
+        condition: service_healthy
+    devices:
+      - "/dev/sda"
+      - "/dev/sdb"
+      - "/dev/sdc"
